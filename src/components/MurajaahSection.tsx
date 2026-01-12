@@ -20,6 +20,7 @@ interface MurajaahSectionProps {
   requireLogin?: boolean;
   title?: string;
   infoMessage?: string;
+  murajaahType?: 'home' | 'class';
 }
 
 const MurajaahSection = ({ 
@@ -27,7 +28,8 @@ const MurajaahSection = ({
   isLoggedIn = true, 
   requireLogin = false,
   title = "Riwayat Murajaah",
-  infoMessage = "Silakan catat hasil murajaah hafalan ananda di rumah. Murajaah adalah mengulang hafalan yang sudah dihafal agar tetap terjaga."
+  infoMessage = "Silakan catat hasil murajaah hafalan ananda di rumah. Murajaah adalah mengulang hafalan yang sudah dihafal agar tetap terjaga.",
+  murajaahType = 'home'
 }: MurajaahSectionProps) => {
   const [records, setRecords] = useState<MurajaahRecord[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -49,6 +51,7 @@ const MurajaahSection = ({
           .from('murajaah_records')
           .select('*')
           .eq('student_id', student.id)
+          .eq('type', murajaahType)
           .order('date', { ascending: false });
 
         if (error) throw error;
@@ -71,7 +74,7 @@ const MurajaahSection = ({
     };
 
     fetchRecords();
-  }, [student.id]);
+  }, [student.id, murajaahType]);
 
   const resetForm = () => {
     setFormData({
@@ -96,6 +99,7 @@ const MurajaahSection = ({
           date: formData.date,
           surah: formData.surah,
           status: formData.status,
+          type: murajaahType,
         })
         .select()
         .single();
