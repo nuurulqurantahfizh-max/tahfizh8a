@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { students, regularSurahs, specialSurahs } from "@/data/students";
 import Header from "@/components/Header";
@@ -11,12 +11,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, BookOpen, RefreshCcw, Lock, LogOut, User, BookMarked } from "lucide-react";
 import { toast } from "sonner";
 
+const TEACHER_LOGIN_KEY = "nq_teacher_logged_in";
+
 const StudentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const student = students.find((s) => s.id === id);
   
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem(TEACHER_LOGIN_KEY) === "true";
+  });
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Sync login state across tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === TEACHER_LOGIN_KEY) {
+        setIsLoggedIn(e.newValue === "true");
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   if (!student) {
     return (
@@ -34,8 +49,14 @@ const StudentDetail = () => {
   const surahs = student.isSpecial ? specialSurahs : regularSurahs;
 
   const handleLogout = () => {
+    localStorage.removeItem(TEACHER_LOGIN_KEY);
     setIsLoggedIn(false);
     toast.success("Berhasil logout");
+  };
+
+  const handleLoginSuccess = () => {
+    localStorage.setItem(TEACHER_LOGIN_KEY, "true");
+    setIsLoggedIn(true);
   };
 
   return (
@@ -157,7 +178,7 @@ const StudentDetail = () => {
       <TeacherLoginModal
         open={showLoginModal}
         onOpenChange={setShowLoginModal}
-        onSuccess={() => setIsLoggedIn(true)}
+        onSuccess={handleLoginSuccess}
       />
     </div>
   );
