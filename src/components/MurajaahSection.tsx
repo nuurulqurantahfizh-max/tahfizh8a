@@ -10,8 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, FileDown, BookOpen } from "lucide-react";
+import { Plus, FileDown, BookOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MurajaahSectionProps {
   student: Student;
@@ -20,6 +21,8 @@ interface MurajaahSectionProps {
 const MurajaahSection = ({ student }: MurajaahSectionProps) => {
   const [records, setRecords] = useState<MurajaahRecord[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -27,19 +30,38 @@ const MurajaahSection = ({ student }: MurajaahSectionProps) => {
     status: "" as "Lancar" | "Kurang Lancar" | "Tidak Lancar" | "",
   });
 
-  // Load records from localStorage
+  // Load records from database
   useEffect(() => {
-    const stored = localStorage.getItem(`murajaah_${student.id}`);
-    if (stored) {
-      setRecords(JSON.parse(stored));
-    }
-  }, [student.id]);
+    const fetchRecords = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('murajaah_records')
+          .select('*')
+          .eq('student_id', student.id)
+          .order('date', { ascending: false });
 
-  // Save records to localStorage
-  const saveRecords = (newRecords: MurajaahRecord[]) => {
-    localStorage.setItem(`murajaah_${student.id}`, JSON.stringify(newRecords));
-    setRecords(newRecords);
-  };
+        if (error) throw error;
+
+        const mappedRecords: MurajaahRecord[] = (data || []).map(record => ({
+          id: record.id,
+          studentId: record.student_id,
+          date: record.date,
+          surah: record.surah,
+          status: record.status as "Lancar" | "Kurang Lancar" | "Tidak Lancar",
+        }));
+
+        setRecords(mappedRecords);
+      } catch (error) {
+        console.error('Error fetching records:', error);
+        toast.error("Gagal memuat data murajaah");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecords();
+  }, [student.id]);
 
   const resetForm = () => {
     setFormData({
@@ -49,24 +71,45 @@ const MurajaahSection = ({ student }: MurajaahSectionProps) => {
     });
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!formData.surah || !formData.status) {
       toast.error("Mohon lengkapi semua field");
       return;
     }
 
-    const newRecord: MurajaahRecord = {
-      id: Date.now().toString(),
-      studentId: student.id,
-      date: formData.date,
-      surah: formData.surah,
-      status: formData.status as "Lancar" | "Kurang Lancar" | "Tidak Lancar",
-    };
+    setIsSaving(true);
+    try {
+      const { data, error } = await supabase
+        .from('murajaah_records')
+        .insert({
+          student_id: student.id,
+          date: formData.date,
+          surah: formData.surah,
+          status: formData.status,
+        })
+        .select()
+        .single();
 
-    saveRecords([...records, newRecord]);
-    resetForm();
-    setIsAdding(false);
-    toast.success("Murajaah berhasil dicatat. Jazakallahu khairan!");
+      if (error) throw error;
+
+      const newRecord: MurajaahRecord = {
+        id: data.id,
+        studentId: data.student_id,
+        date: data.date,
+        surah: data.surah,
+        status: data.status as "Lancar" | "Kurang Lancar" | "Tidak Lancar",
+      };
+
+      setRecords([newRecord, ...records]);
+      resetForm();
+      setIsAdding(false);
+      toast.success("Murajaah berhasil dicatat. Jazakallahu khairan!");
+    } catch (error) {
+      console.error('Error adding record:', error);
+      toast.error("Gagal menyimpan data murajaah");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getStatusStyle = (status: string) => {
@@ -141,6 +184,15 @@ const MurajaahSection = ({ student }: MurajaahSectionProps) => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Memuat data...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Info for parents */}
@@ -201,7 +253,7 @@ const MurajaahSection = ({ student }: MurajaahSectionProps) => {
               <Label htmlFor="murajaah-surah">Surat yang Dimurajaah</Label>
               <Input
                 id="murajaah-surah"
-                placeholder="Contoh: Al-Ahqaf"
+                placeholder="Contoh: Al-Mursalat"
                 value={formData.surah}
                 onChange={(e) => setFormData({ ...formData, surah: e.target.value })}
               />
@@ -230,13 +282,18 @@ const MurajaahSection = ({ student }: MurajaahSectionProps) => {
                 setIsAdding(false);
                 resetForm();
               }}
+              disabled={isSaving}
             >
               Batal
             </Button>
             <Button
               onClick={handleAdd}
               className="btn-primary-islamic"
+              disabled={isSaving}
             >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : null}
               Simpan
             </Button>
           </div>

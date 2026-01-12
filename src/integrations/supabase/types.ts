@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      hafalan_records: {
+        Row: {
+          ayat: string
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          score: number
+          student_id: string
+          surah: string
+          updated_at: string
+        }
+        Insert: {
+          ayat: string
+          created_at?: string
+          date: string
+          id?: string
+          notes?: string | null
+          score: number
+          student_id: string
+          surah: string
+          updated_at?: string
+        }
+        Update: {
+          ayat?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          score?: number
+          student_id?: string
+          surah?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      murajaah_records: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          status: string
+          student_id: string
+          surah: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          status: string
+          student_id: string
+          surah: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          status?: string
+          student_id?: string
+          surah?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
