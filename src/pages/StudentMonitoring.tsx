@@ -95,13 +95,19 @@ const StudentMonitoring = () => {
           isLoggedIn={isLoggedIn}
         />
 
-        {/* Murajaah Section */}
+        {/* Murajaah Section - Only teachers can add */}
         <div className="mt-8">
           <div className="flex items-center gap-2 mb-4">
             <RefreshCcw className="w-5 h-5 text-primary" />
-            <h2 className="font-bold text-foreground">Murajaah Hafalan</h2>
+            <h2 className="font-bold text-foreground">Murajaah Hafalan di Kelas</h2>
           </div>
-          <MurajaahSection student={student} />
+          <MurajaahSection 
+            student={student} 
+            isLoggedIn={isLoggedIn}
+            requireLogin={true}
+            title="Riwayat Murajaah Kelas"
+            infoMessage="Catat hasil murajaah hafalan siswa di kelas. Hanya guru yang dapat menambahkan data."
+          />
         </div>
 
         {/* Login/Logout Button */}
