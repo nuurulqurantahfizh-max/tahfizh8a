@@ -18,6 +18,7 @@ const RekapMurajaah = () => {
         const { data, error } = await supabase
           .from('murajaah_records')
           .select('*')
+          .eq('type', 'home')
           .order('date', { ascending: false });
 
         if (error) throw error;
@@ -63,7 +64,7 @@ const RekapMurajaah = () => {
     const printContent = `
       <html>
         <head>
-          <title>Rekap Murajaah Hafalan - Kelas 8A</title>
+          <title>Rekap Murajaah Orang Tua - Kelas 8A</title>
           <style>
             body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
             h1 { color: #d97706; text-align: center; }
@@ -76,7 +77,7 @@ const RekapMurajaah = () => {
           </style>
         </head>
         <body>
-          <h1>Rekap Murajaah Hafalan</h1>
+          <h1>Rekap Murajaah Hafalan (Orang Tua)</h1>
           <p style="text-align: center;">Madrasah Nuurul Qur'an - Kelas 8A</p>
           <p style="text-align: center;">Dicetak: ${format(new Date(), "dd MMMM yyyy", { locale: localeId })}</p>
           
@@ -130,9 +131,9 @@ const RekapMurajaah = () => {
             <ArrowLeft className="w-4 h-4" />
             Kembali
           </Link>
-          <h1 className="text-xl font-bold">Rekap Murajaah</h1>
+          <h1 className="text-xl font-bold">Rekap Murajaah Orang Tua</h1>
           <p className="text-white/80 text-sm">
-            Seluruh data murajaah siswa Kelas 8A
+            Data murajaah dari orang tua siswa Kelas 8A
           </p>
         </div>
       </div>

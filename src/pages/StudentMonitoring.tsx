@@ -107,6 +107,7 @@ const StudentMonitoring = () => {
             requireLogin={true}
             title="Riwayat Murajaah Kelas"
             infoMessage="Catat hasil murajaah hafalan siswa di kelas. Hanya guru yang dapat menambahkan data."
+            murajaahType="class"
           />
         </div>
 

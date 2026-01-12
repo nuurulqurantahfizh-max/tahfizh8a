@@ -58,6 +58,7 @@ export type Database = {
           status: string
           student_id: string
           surah: string
+          type: string
           updated_at: string
         }
         Insert: {
@@ -67,6 +68,7 @@ export type Database = {
           status: string
           student_id: string
           surah: string
+          type?: string
           updated_at?: string
         }
         Update: {
@@ -76,6 +78,7 @@ export type Database = {
           status?: string
           student_id?: string
           surah?: string
+          type?: string
           updated_at?: string
         }
         Relationships: []
