@@ -16,9 +16,19 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface MurajaahSectionProps {
   student: Student;
+  isLoggedIn?: boolean;
+  requireLogin?: boolean;
+  title?: string;
+  infoMessage?: string;
 }
 
-const MurajaahSection = ({ student }: MurajaahSectionProps) => {
+const MurajaahSection = ({ 
+  student, 
+  isLoggedIn = true, 
+  requireLogin = false,
+  title = "Riwayat Murajaah",
+  infoMessage = "Silakan catat hasil murajaah hafalan ananda di rumah. Murajaah adalah mengulang hafalan yang sudah dihafal agar tetap terjaga."
+}: MurajaahSectionProps) => {
   const [records, setRecords] = useState<MurajaahRecord[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -193,26 +203,30 @@ const MurajaahSection = ({ student }: MurajaahSectionProps) => {
     );
   }
 
+  const canAdd = requireLogin ? isLoggedIn : true;
+
   return (
     <div className="space-y-4">
-      {/* Info for parents */}
-      <div className="bg-secondary/50 rounded-lg p-4 border border-border/50">
-        <div className="flex items-start gap-3">
-          <BookOpen className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm text-foreground font-medium">
-              Assalamu'alaikum Bapak/Ibu
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Silakan catat hasil murajaah hafalan ananda di rumah. Murajaah adalah mengulang hafalan yang sudah dihafal agar tetap terjaga.
-            </p>
+      {/* Info message */}
+      {infoMessage && (
+        <div className="bg-secondary/50 rounded-lg p-4 border border-border/50">
+          <div className="flex items-start gap-3">
+            <BookOpen className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-foreground font-medium">
+                {requireLogin ? "Info Guru" : "Assalamu'alaikum Bapak/Ibu"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {infoMessage}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Header with actions */}
       <div className="flex flex-wrap gap-2 justify-between items-center">
-        <h3 className="font-semibold text-foreground">Riwayat Murajaah</h3>
+        <h3 className="font-semibold text-foreground">{title}</h3>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -223,7 +237,7 @@ const MurajaahSection = ({ student }: MurajaahSectionProps) => {
             <FileDown className="w-4 h-4 mr-1" />
             Export PDF
           </Button>
-          {!isAdding && (
+          {!isAdding && canAdd && (
             <Button
               size="sm"
               onClick={() => setIsAdding(true)}
