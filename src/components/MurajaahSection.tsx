@@ -10,7 +10,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, FileDown, BookOpen, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, FileDown, BookOpen, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -35,6 +45,9 @@ const MurajaahSection = ({
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<MurajaahRecord | null>(null);
+  const [deleteRecord, setDeleteRecord] = useState<MurajaahRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -82,6 +95,7 @@ const MurajaahSection = ({
       surah: "",
       status: "",
     });
+    setEditingRecord(null);
   };
 
   const handleAdd = async () => {
@@ -123,6 +137,74 @@ const MurajaahSection = ({
       toast.error("Gagal menyimpan data murajaah");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleEdit = (record: MurajaahRecord) => {
+    setEditingRecord(record);
+    setFormData({
+      date: record.date,
+      surah: record.surah,
+      status: record.status,
+    });
+    setIsAdding(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingRecord || !formData.surah || !formData.status) {
+      toast.error("Mohon lengkapi semua field");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('murajaah_records')
+        .update({
+          date: formData.date,
+          surah: formData.surah,
+          status: formData.status,
+        })
+        .eq('id', editingRecord.id);
+
+      if (error) throw error;
+
+      setRecords(records.map(r => 
+        r.id === editingRecord.id 
+          ? { ...r, date: formData.date, surah: formData.surah, status: formData.status as "Lancar" | "Kurang Lancar" | "Tidak Lancar" }
+          : r
+      ));
+      resetForm();
+      setIsAdding(false);
+      toast.success("Murajaah berhasil diperbarui");
+    } catch (error) {
+      console.error('Error updating record:', error);
+      toast.error("Gagal memperbarui data murajaah");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteRecord) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('murajaah_records')
+        .delete()
+        .eq('id', deleteRecord.id);
+
+      if (error) throw error;
+
+      setRecords(records.filter(r => r.id !== deleteRecord.id));
+      setDeleteRecord(null);
+      toast.success("Data murajaah berhasil dihapus");
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      toast.error("Gagal menghapus data murajaah");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -208,6 +290,7 @@ const MurajaahSection = ({
   }
 
   const canAdd = requireLogin ? isLoggedIn : true;
+  const canEditDelete = requireLogin ? isLoggedIn : true;
 
   return (
     <div className="space-y-4">
@@ -254,9 +337,12 @@ const MurajaahSection = ({
         </div>
       </div>
 
-      {/* Add Form */}
+      {/* Add/Edit Form */}
       {isAdding && (
         <div className="card-islamic p-4 space-y-4 animate-slide-up">
+          <h4 className="font-medium text-foreground">
+            {editingRecord ? "Edit Murajaah" : "Tambah Murajaah"}
+          </h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="murajaah-date">Tanggal</Label>
@@ -305,14 +391,14 @@ const MurajaahSection = ({
               Batal
             </Button>
             <Button
-              onClick={handleAdd}
+              onClick={editingRecord ? handleUpdate : handleAdd}
               className="btn-primary-islamic"
               disabled={isSaving}
             >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 mr-1 animate-spin" />
               ) : null}
-              Simpan
+              {editingRecord ? "Perbarui" : "Simpan"}
             </Button>
           </div>
         </div>
@@ -333,7 +419,7 @@ const MurajaahSection = ({
                 className="card-islamic p-4 animate-fade-in"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
+                  <div className="flex-1">
                     <span className="font-semibold text-foreground">
                       {record.surah}
                     </span>
@@ -346,14 +432,59 @@ const MurajaahSection = ({
                       })}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusStyle(record.status)}`}>
-                    {record.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusStyle(record.status)}`}>
+                      {record.status}
+                    </span>
+                    {canEditDelete && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={() => handleEdit(record)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => setDeleteRecord(record)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteRecord} onOpenChange={(open) => !open && setDeleteRecord(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Data Murajaah</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus data murajaah surat "{deleteRecord?.surah}" pada tanggal {deleteRecord && new Date(deleteRecord.date).toLocaleDateString("id-ID")}? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
