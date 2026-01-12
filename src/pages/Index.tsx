@@ -2,7 +2,7 @@ import { students } from "@/data/students";
 import Header from "@/components/Header";
 import StudentCard from "@/components/StudentCard";
 import IslamicQuote from "@/components/IslamicQuote";
-import { BookOpen, RefreshCw, FileText } from "lucide-react";
+import { BookOpen, RefreshCw, FileText, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Index = () => {
@@ -15,6 +15,15 @@ const Index = () => {
         <div className="mb-6 animate-fade-in">
           <IslamicQuote variant="full" />
         </div>
+
+        {/* Dashboard Button */}
+        <Link
+          to="/dashboard"
+          className="flex items-center justify-center gap-2 py-4 px-4 rounded-xl bg-gradient-to-r from-primary to-gold text-white hover:opacity-90 transition-opacity font-semibold text-sm shadow-lg mb-4"
+        >
+          <BarChart3 className="w-5 h-5" />
+          <span>Dashboard Statistik</span>
+        </Link>
 
         {/* Rekap Buttons */}
         <div className="grid grid-cols-2 gap-3 mb-6">
