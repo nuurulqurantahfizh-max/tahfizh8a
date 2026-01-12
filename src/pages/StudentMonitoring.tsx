@@ -3,8 +3,9 @@ import { students, regularSurahs, specialSurahs } from "@/data/students";
 import Header from "@/components/Header";
 import IslamicQuote from "@/components/IslamicQuote";
 import MonitoringSection from "@/components/MonitoringSection";
+import MurajaahSection from "@/components/MurajaahSection";
 import TeacherLoginModal from "@/components/TeacherLoginModal";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { ArrowLeft, BookOpen, RefreshCcw } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const TEACHER_LOGIN_KEY = "nq_teacher_logged_in";
@@ -93,6 +94,15 @@ const StudentMonitoring = () => {
           student={student}
           isLoggedIn={isLoggedIn}
         />
+
+        {/* Murajaah Section */}
+        <div className="mt-8">
+          <div className="flex items-center gap-2 mb-4">
+            <RefreshCcw className="w-5 h-5 text-primary" />
+            <h2 className="font-bold text-foreground">Murajaah Hafalan</h2>
+          </div>
+          <MurajaahSection student={student} />
+        </div>
 
         {/* Login/Logout Button */}
         <div className="mt-6">
