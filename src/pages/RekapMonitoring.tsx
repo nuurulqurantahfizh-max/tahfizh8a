@@ -1,37 +1,58 @@
 import { Link } from "react-router-dom";
 import { students, getGradeStatus, HafalanRecord } from "@/data/students";
-import { ArrowLeft, FileText, Download } from "lucide-react";
+import { ArrowLeft, FileText, Download, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const RekapMonitoring = () => {
   const [allRecords, setAllRecords] = useState<(HafalanRecord & { studentName: string })[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const records: (HafalanRecord & { studentName: string })[] = [];
-    students.forEach((student) => {
-      const stored = localStorage.getItem(`hafalan_${student.id}`);
-      if (stored) {
-        const studentRecords: HafalanRecord[] = JSON.parse(stored);
-        studentRecords.forEach((record) => {
-          records.push({
-            ...record,
-            studentName: student.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()),
-          });
+    const fetchAllRecords = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('hafalan_records')
+          .select('*')
+          .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        const records: (HafalanRecord & { studentName: string })[] = (data || []).map(record => {
+          const student = students.find(s => s.id === record.student_id);
+          return {
+            id: record.id,
+            studentId: record.student_id,
+            date: record.date,
+            surah: record.surah,
+            ayat: record.ayat,
+            score: record.score,
+            notes: record.notes || '',
+            studentName: student?.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) || 'Unknown',
+          };
         });
+
+        setAllRecords(records);
+      } catch (error) {
+        console.error('Error fetching records:', error);
+        toast.error("Gagal memuat data monitoring");
+      } finally {
+        setIsLoading(false);
       }
-    });
-    // Sort by date descending
-    records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    setAllRecords(records);
+    };
+
+    fetchAllRecords();
   }, []);
 
   const exportToPDF = () => {
     const printContent = `
       <html>
         <head>
-          <title>Rekap Monitoring Hafalan - Kelas 11 A</title>
+          <title>Rekap Monitoring Hafalan - Kelas 8A</title>
           <style>
             body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
             h1 { color: #166534; text-align: center; }
@@ -47,7 +68,7 @@ const RekapMonitoring = () => {
         </head>
         <body>
           <h1>Rekap Monitoring Hafalan</h1>
-          <p style="text-align: center;">Madrasah Nuurul Qur'an - Kelas 11 A</p>
+          <p style="text-align: center;">Madrasah Nuurul Qur'an - Kelas 8A</p>
           <p style="text-align: center;">Dicetak: ${format(new Date(), "dd MMMM yyyy", { locale: localeId })}</p>
           
           <table>
@@ -107,7 +128,7 @@ const RekapMonitoring = () => {
           </Link>
           <h1 className="text-xl font-bold">Rekap Monitoring</h1>
           <p className="text-primary-foreground/80 text-sm">
-            Seluruh data hafalan siswa Kelas 11 A
+            Seluruh data hafalan siswa Kelas 8A
           </p>
         </div>
       </div>
@@ -116,14 +137,20 @@ const RekapMonitoring = () => {
         {/* Export Button */}
         <button
           onClick={exportToPDF}
-          className="w-full mb-6 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 border-primary text-primary hover:bg-primary/5 transition-colors font-medium"
+          disabled={allRecords.length === 0 || isLoading}
+          className="w-full mb-6 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 border-primary text-primary hover:bg-primary/5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-5 h-5" />
           Export PDF
         </button>
 
         {/* Records */}
-        {allRecords.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Memuat data...</span>
+          </div>
+        ) : allRecords.length === 0 ? (
           <div className="card-islamic p-8 text-center">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">Belum ada data monitoring</p>

@@ -1,30 +1,49 @@
 import { Link } from "react-router-dom";
 import { students, MurajaahRecord } from "@/data/students";
-import { ArrowLeft, FileText, Download, RefreshCw } from "lucide-react";
+import { ArrowLeft, Download, RefreshCw, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const RekapMurajaah = () => {
   const [allRecords, setAllRecords] = useState<(MurajaahRecord & { studentName: string })[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const records: (MurajaahRecord & { studentName: string })[] = [];
-    students.forEach((student) => {
-      const stored = localStorage.getItem(`murajaah_${student.id}`);
-      if (stored) {
-        const studentRecords: MurajaahRecord[] = JSON.parse(stored);
-        studentRecords.forEach((record) => {
-          records.push({
-            ...record,
-            studentName: student.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()),
-          });
+    const fetchAllRecords = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('murajaah_records')
+          .select('*')
+          .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        const records: (MurajaahRecord & { studentName: string })[] = (data || []).map(record => {
+          const student = students.find(s => s.id === record.student_id);
+          return {
+            id: record.id,
+            studentId: record.student_id,
+            date: record.date,
+            surah: record.surah,
+            status: record.status as "Lancar" | "Kurang Lancar" | "Tidak Lancar",
+            studentName: student?.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) || 'Unknown',
+          };
         });
+
+        setAllRecords(records);
+      } catch (error) {
+        console.error('Error fetching records:', error);
+        toast.error("Gagal memuat data murajaah");
+      } finally {
+        setIsLoading(false);
       }
-    });
-    // Sort by date descending
-    records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    setAllRecords(records);
+    };
+
+    fetchAllRecords();
   }, []);
 
   const getStatusStyle = (status: string) => {
@@ -44,7 +63,7 @@ const RekapMurajaah = () => {
     const printContent = `
       <html>
         <head>
-          <title>Rekap Murajaah Hafalan - Kelas 11 A</title>
+          <title>Rekap Murajaah Hafalan - Kelas 8A</title>
           <style>
             body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
             h1 { color: #d97706; text-align: center; }
@@ -58,7 +77,7 @@ const RekapMurajaah = () => {
         </head>
         <body>
           <h1>Rekap Murajaah Hafalan</h1>
-          <p style="text-align: center;">Madrasah Nuurul Qur'an - Kelas 11 A</p>
+          <p style="text-align: center;">Madrasah Nuurul Qur'an - Kelas 8A</p>
           <p style="text-align: center;">Dicetak: ${format(new Date(), "dd MMMM yyyy", { locale: localeId })}</p>
           
           <table>
@@ -113,7 +132,7 @@ const RekapMurajaah = () => {
           </Link>
           <h1 className="text-xl font-bold">Rekap Murajaah</h1>
           <p className="text-white/80 text-sm">
-            Seluruh data murajaah siswa Kelas 11 A
+            Seluruh data murajaah siswa Kelas 8A
           </p>
         </div>
       </div>
@@ -122,14 +141,20 @@ const RekapMurajaah = () => {
         {/* Export Button */}
         <button
           onClick={exportToPDF}
-          className="w-full mb-6 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 border-gold text-gold hover:bg-gold/5 transition-colors font-medium"
+          disabled={allRecords.length === 0 || isLoading}
+          className="w-full mb-6 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 border-gold text-gold hover:bg-gold/5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-5 h-5" />
           Export PDF
         </button>
 
         {/* Records */}
-        {allRecords.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-gold" />
+            <span className="ml-2 text-muted-foreground">Memuat data...</span>
+          </div>
+        ) : allRecords.length === 0 ? (
           <div className="card-islamic p-8 text-center">
             <RefreshCw className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">Belum ada data murajaah</p>

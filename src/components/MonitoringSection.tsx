@@ -11,8 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Edit2, Save, X, FileDown } from "lucide-react";
+import { Plus, Trash2, Edit2, Save, X, FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MonitoringSectionProps {
   student: Student;
@@ -23,6 +24,8 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
   const [records, setRecords] = useState<HafalanRecord[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -34,19 +37,40 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
 
   const surahs = student.isSpecial ? specialSurahs : regularSurahs;
 
-  // Load records from localStorage
+  // Load records from database
   useEffect(() => {
-    const stored = localStorage.getItem(`hafalan_${student.id}`);
-    if (stored) {
-      setRecords(JSON.parse(stored));
-    }
-  }, [student.id]);
+    const fetchRecords = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('hafalan_records')
+          .select('*')
+          .eq('student_id', student.id)
+          .order('date', { ascending: false });
 
-  // Save records to localStorage
-  const saveRecords = (newRecords: HafalanRecord[]) => {
-    localStorage.setItem(`hafalan_${student.id}`, JSON.stringify(newRecords));
-    setRecords(newRecords);
-  };
+        if (error) throw error;
+
+        const mappedRecords: HafalanRecord[] = (data || []).map(record => ({
+          id: record.id,
+          studentId: record.student_id,
+          date: record.date,
+          surah: record.surah,
+          ayat: record.ayat,
+          score: record.score,
+          notes: record.notes || '',
+        }));
+
+        setRecords(mappedRecords);
+      } catch (error) {
+        console.error('Error fetching records:', error);
+        toast.error("Gagal memuat data hafalan");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecords();
+  }, [student.id]);
 
   const resetForm = () => {
     setFormData({
@@ -58,7 +82,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
     });
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!formData.surah || !formData.ayat || !formData.score) {
       toast.error("Mohon lengkapi semua field yang wajib diisi");
       return;
@@ -70,20 +94,43 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       return;
     }
 
-    const newRecord: HafalanRecord = {
-      id: Date.now().toString(),
-      studentId: student.id,
-      date: formData.date,
-      surah: formData.surah,
-      ayat: formData.ayat,
-      score: score,
-      notes: formData.notes,
-    };
+    setIsSaving(true);
+    try {
+      const { data, error } = await supabase
+        .from('hafalan_records')
+        .insert({
+          student_id: student.id,
+          date: formData.date,
+          surah: formData.surah,
+          ayat: formData.ayat,
+          score: score,
+          notes: formData.notes,
+        })
+        .select()
+        .single();
 
-    saveRecords([...records, newRecord]);
-    resetForm();
-    setIsAdding(false);
-    toast.success("Data hafalan berhasil ditambahkan");
+      if (error) throw error;
+
+      const newRecord: HafalanRecord = {
+        id: data.id,
+        studentId: data.student_id,
+        date: data.date,
+        surah: data.surah,
+        ayat: data.ayat,
+        score: data.score,
+        notes: data.notes || '',
+      };
+
+      setRecords([newRecord, ...records]);
+      resetForm();
+      setIsAdding(false);
+      toast.success("Data hafalan berhasil ditambahkan");
+    } catch (error) {
+      console.error('Error adding record:', error);
+      toast.error("Gagal menyimpan data hafalan");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEdit = (record: HafalanRecord) => {
@@ -97,7 +144,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
     });
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (!editingId) return;
 
     const score = parseInt(formData.score);
@@ -106,29 +153,61 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       return;
     }
 
-    const updated = records.map((r) =>
-      r.id === editingId
-        ? {
-            ...r,
-            date: formData.date,
-            surah: formData.surah,
-            ayat: formData.ayat,
-            score: score,
-            notes: formData.notes,
-          }
-        : r
-    );
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('hafalan_records')
+        .update({
+          date: formData.date,
+          surah: formData.surah,
+          ayat: formData.ayat,
+          score: score,
+          notes: formData.notes,
+        })
+        .eq('id', editingId);
 
-    saveRecords(updated);
-    setEditingId(null);
-    resetForm();
-    toast.success("Data hafalan berhasil diperbarui");
+      if (error) throw error;
+
+      const updated = records.map((r) =>
+        r.id === editingId
+          ? {
+              ...r,
+              date: formData.date,
+              surah: formData.surah,
+              ayat: formData.ayat,
+              score: score,
+              notes: formData.notes,
+            }
+          : r
+      );
+
+      setRecords(updated);
+      setEditingId(null);
+      resetForm();
+      toast.success("Data hafalan berhasil diperbarui");
+    } catch (error) {
+      console.error('Error updating record:', error);
+      toast.error("Gagal memperbarui data hafalan");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    const updated = records.filter((r) => r.id !== id);
-    saveRecords(updated);
-    toast.success("Data hafalan berhasil dihapus");
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('hafalan_records')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setRecords(records.filter((r) => r.id !== id));
+      toast.success("Data hafalan berhasil dihapus");
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      toast.error("Gagal menghapus data hafalan");
+    }
   };
 
   const exportToPDF = () => {
@@ -199,6 +278,15 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       printWindow.print();
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Memuat data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -299,6 +387,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
                 setEditingId(null);
                 resetForm();
               }}
+              disabled={isSaving}
             >
               <X className="w-4 h-4 mr-1" />
               Batal
@@ -306,8 +395,13 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
             <Button
               onClick={editingId ? handleUpdate : handleAdd}
               className="btn-primary-islamic"
+              disabled={isSaving}
             >
-              <Save className="w-4 h-4 mr-1" />
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-1" />
+              )}
               {editingId ? "Perbarui" : "Simpan"}
             </Button>
           </div>
