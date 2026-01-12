@@ -19,7 +19,7 @@ const Header = () => {
               Madrasah Nuurul Qur'an
             </h1>
             <p className="text-primary-foreground/80 text-sm mt-1">
-              Program Tahfizh Al-Qur'an • Kelas 11 A
+              Program Tahfizh Al-Qur'an • Kelas 8A
             </p>
           </div>
 

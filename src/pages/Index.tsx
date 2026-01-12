@@ -54,7 +54,7 @@ const Index = () => {
             Madrasah Nuurul Qur'an
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Program Tahfizh Al-Qur'an • Kelas 11 A
+            Program Tahfizh Al-Qur'an • Kelas 8A
           </p>
         </footer>
       </main>
