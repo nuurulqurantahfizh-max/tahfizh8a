@@ -4,7 +4,8 @@ import { students, regularSurahs, getGradeStatus } from "@/data/students";
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Users, BookOpen, Trophy, TrendingUp, CheckCircle, AlertCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Users, BookOpen, Trophy, TrendingUp, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 interface HafalanRecord {
@@ -125,10 +126,18 @@ const Dashboard = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-6 max-w-6xl">
-        {/* Page Title */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-1 h-6 bg-primary rounded-full" />
-          <h1 className="text-xl font-bold text-foreground">Dashboard Statistik</h1>
+        {/* Back Button & Page Title */}
+        <div className="flex items-center gap-3 mb-6">
+          <Link 
+            to="/" 
+            className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-foreground" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-6 bg-primary rounded-full" />
+            <h1 className="text-xl font-bold text-foreground">Dashboard Statistik</h1>
+          </div>
         </div>
 
         {/* Summary Cards */}
