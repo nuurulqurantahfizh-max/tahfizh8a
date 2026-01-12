@@ -5,13 +5,28 @@ import IslamicQuote from "@/components/IslamicQuote";
 import MonitoringSection from "@/components/MonitoringSection";
 import TeacherLoginModal from "@/components/TeacherLoginModal";
 import { ArrowLeft, BookOpen } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+const TEACHER_LOGIN_KEY = "nq_teacher_logged_in";
 
 const StudentMonitoring = () => {
   const { id } = useParams<{ id: string }>();
   const student = students.find((s) => s.id === id);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem(TEACHER_LOGIN_KEY) === "true";
+  });
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Sync login state across tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === TEACHER_LOGIN_KEY) {
+        setIsLoggedIn(e.newValue === "true");
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   if (!student) {
     return (
@@ -83,7 +98,10 @@ const StudentMonitoring = () => {
         <div className="mt-6">
           {isLoggedIn ? (
             <button
-              onClick={() => setIsLoggedIn(false)}
+              onClick={() => {
+                localStorage.removeItem(TEACHER_LOGIN_KEY);
+                setIsLoggedIn(false);
+              }}
               className="w-full py-3 px-4 rounded-lg border-2 border-destructive/30 text-destructive hover:bg-destructive/5 transition-colors font-medium text-sm"
             >
               Logout Guru
@@ -104,6 +122,7 @@ const StudentMonitoring = () => {
         open={showLoginModal}
         onOpenChange={setShowLoginModal}
         onSuccess={() => {
+          localStorage.setItem(TEACHER_LOGIN_KEY, "true");
           setIsLoggedIn(true);
           setShowLoginModal(false);
         }}
