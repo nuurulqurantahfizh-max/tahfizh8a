@@ -4,6 +4,8 @@ export interface Student {
   isSpecial: boolean; // Special surah list for Satrio, Hasbi, Syahwal
 }
 
+// PENTING: ID siswa tidak boleh diubah karena digunakan sebagai referensi di database
+// Jika menambah siswa baru, gunakan ID baru yang belum terpakai
 export const students: Student[] = [
   { id: "1", name: "ABDUL HAKIM", isSpecial: false },
   { id: "2", name: "ABDURROZZAQ ASSYABANI", isSpecial: false },
@@ -11,8 +13,8 @@ export const students: Student[] = [
   { id: "4", name: "DAFFA SATRIOTETHUKO", isSpecial: false },
   { id: "5", name: "DEVIN AHZA PURBA", isSpecial: false },
   { id: "6", name: "ETHAN YUSUF HABIBBULAH", isSpecial: false },
-  { id: "7", name: "GHIFARI ALFARIZYIMRON", isSpecial: false },
-  { id: "8", name: "IMRON", isSpecial: false },
+  { id: "7", name: "GHIFARI ALFARIZY", isSpecial: false },
+  { id: "25", name: "IMRON", isSpecial: false },
   { id: "9", name: "KENZIE LUTFAN PERMADI", isSpecial: false },
   { id: "10", name: "KHALISH IBNU ABDURAHMAN", isSpecial: false },
   { id: "11", name: "MUHAMAD IBRAHIM", isSpecial: false },
