@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { students, getGradeStatus, HafalanRecord, MurajaahRecord } from "@/data/students";
-import { ArrowLeft, FileText, Download, Loader2, BookOpen, RefreshCcw, CalendarIcon } from "lucide-react";
+import { ArrowLeft, FileText, Download, Loader2, BookOpen, RefreshCcw, CalendarIcon, Eye } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { id as localeId } from "date-fns/locale";
@@ -109,8 +109,8 @@ const RekapMonitoring = () => {
     });
   }, [murajaahRecords, startDate, endDate]);
 
-  const exportHafalanToPDF = () => {
-    const printContent = `
+  const generateHafalanHTML = () => {
+    return `
       <html>
         <head>
           <title>Rekap Setoran Hafalan - Kelas 8A</title>
@@ -167,17 +167,27 @@ const RekapMonitoring = () => {
         </body>
       </html>
     `;
+  };
 
+  const previewHafalan = () => {
+    const previewWindow = window.open("", "_blank");
+    if (previewWindow) {
+      previewWindow.document.write(generateHafalanHTML());
+      previewWindow.document.close();
+    }
+  };
+
+  const exportHafalanToPDF = () => {
     const printWindow = window.open("", "_blank");
     if (printWindow) {
-      printWindow.document.write(printContent);
+      printWindow.document.write(generateHafalanHTML());
       printWindow.document.close();
       printWindow.print();
     }
   };
 
-  const exportMurajaahToPDF = () => {
-    const printContent = `
+  const generateMurajaahHTML = () => {
+    return `
       <html>
         <head>
           <title>Rekap Murajaah Kelas - Kelas 8A</title>
@@ -227,10 +237,20 @@ const RekapMonitoring = () => {
         </body>
       </html>
     `;
+  };
 
+  const previewMurajaah = () => {
+    const previewWindow = window.open("", "_blank");
+    if (previewWindow) {
+      previewWindow.document.write(generateMurajaahHTML());
+      previewWindow.document.close();
+    }
+  };
+
+  const exportMurajaahToPDF = () => {
     const printWindow = window.open("", "_blank");
     if (printWindow) {
-      printWindow.document.write(printContent);
+      printWindow.document.write(generateMurajaahHTML());
       printWindow.document.close();
       printWindow.print();
     }
@@ -335,14 +355,24 @@ const RekapMonitoring = () => {
 
             {/* Tab Hafalan */}
             <TabsContent value="hafalan">
-              <button
-                onClick={exportHafalanToPDF}
-                disabled={filteredHafalanRecords.length === 0}
-                className="w-full mb-4 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 border-primary text-primary hover:bg-primary/5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-5 h-5" />
-                Export PDF Hafalan
-              </button>
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => previewHafalan()}
+                  disabled={filteredHafalanRecords.length === 0}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 border-primary text-primary hover:bg-primary/5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Eye className="w-5 h-5" />
+                  Preview
+                </button>
+                <button
+                  onClick={exportHafalanToPDF}
+                  disabled={filteredHafalanRecords.length === 0}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download className="w-5 h-5" />
+                  Export PDF
+                </button>
+              </div>
 
               {filteredHafalanRecords.length === 0 ? (
                 <div className="card-islamic p-8 text-center">
@@ -387,14 +417,24 @@ const RekapMonitoring = () => {
 
             {/* Tab Murajaah Kelas */}
             <TabsContent value="murajaah">
-              <button
-                onClick={exportMurajaahToPDF}
-                disabled={filteredMurajaahRecords.length === 0}
-                className="w-full mb-4 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 border-primary text-primary hover:bg-primary/5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-5 h-5" />
-                Export PDF Murajaah Kelas
-              </button>
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => previewMurajaah()}
+                  disabled={filteredMurajaahRecords.length === 0}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 border-primary text-primary hover:bg-primary/5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Eye className="w-5 h-5" />
+                  Preview
+                </button>
+                <button
+                  onClick={exportMurajaahToPDF}
+                  disabled={filteredMurajaahRecords.length === 0}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download className="w-5 h-5" />
+                  Export PDF
+                </button>
+              </div>
 
               {filteredMurajaahRecords.length === 0 ? (
                 <div className="card-islamic p-8 text-center">
