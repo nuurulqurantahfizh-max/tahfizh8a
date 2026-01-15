@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { students, regularSurahs, getGradeStatus } from "@/data/students";
+import { calculateAyatCount } from "@/data/surahData";
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "react-router-dom";
-import { Users, BookOpen, Trophy, TrendingUp, CheckCircle, AlertCircle, ArrowLeft, TrendingDown } from "lucide-react";
+import { Users, BookOpen, Trophy, TrendingUp, CheckCircle, AlertCircle, ArrowLeft, TrendingDown, FileText } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 interface HafalanRecord {
@@ -32,6 +33,7 @@ interface StudentProgress {
   totalRecords: number;
   averageScore: number;
   completedSurahs: number;
+  totalAyat: number;
   lastActivity: string | null;
 }
 
@@ -66,6 +68,9 @@ const Dashboard = () => {
   const averageScore = hafalanRecords.length > 0 
     ? Math.round(hafalanRecords.reduce((sum, r) => sum + r.score, 0) / hafalanRecords.length) 
     : 0;
+  
+  // Calculate total ayat from all records
+  const totalAyatAll = hafalanRecords.reduce((sum, r) => sum + calculateAyatCount(r.ayat), 0);
 
   // Score distribution
   const scoreDistribution = [
@@ -90,6 +95,7 @@ const Dashboard = () => {
   const studentProgress: StudentProgress[] = students.map(student => {
     const records = hafalanRecords.filter(r => r.student_id === student.id);
     const completedSurahs = new Set(records.map(r => r.surah)).size;
+    const totalAyat = records.reduce((sum, r) => sum + calculateAyatCount(r.ayat), 0);
     const avgScore = records.length > 0 
       ? Math.round(records.reduce((sum, r) => sum + r.score, 0) / records.length)
       : 0;
@@ -101,6 +107,7 @@ const Dashboard = () => {
       totalRecords: records.length,
       averageScore: avgScore,
       completedSurahs,
+      totalAyat,
       lastActivity: lastRecord?.date || null
     };
   }).sort((a, b) => b.averageScore - a.averageScore);
@@ -147,7 +154,7 @@ const Dashboard = () => {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -171,6 +178,20 @@ const Dashboard = () => {
                 <div>
                   <p className="text-2xl font-bold text-foreground">{totalHafalanRecords}</p>
                   <p className="text-xs text-muted-foreground">Total Setoran</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-500/10 rounded-lg">
+                  <FileText className="w-5 h-5 text-purple-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{totalAyatAll}</p>
+                  <p className="text-xs text-muted-foreground">Total Ayat</p>
                 </div>
               </div>
             </CardContent>
@@ -299,7 +320,7 @@ const Dashboard = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{student.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {student.totalRecords} setoran • {student.completedSurahs} surah
+                        {student.totalRecords} setoran • {student.totalAyat} ayat • {student.completedSurahs} surah
                       </p>
                     </div>
                     <div className="text-right">
@@ -341,7 +362,7 @@ const Dashboard = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{student.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {student.totalRecords} setoran • {student.completedSurahs} surah
+                        {student.totalRecords} setoran • {student.totalAyat} ayat • {student.completedSurahs} surah
                       </p>
                     </div>
                     <div className="text-right">
