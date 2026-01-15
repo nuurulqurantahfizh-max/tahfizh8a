@@ -92,20 +92,44 @@ const RekapMonitoring = () => {
     }
   };
 
-  // Filter records based on date range
+  // Helper to get student order index for sorting by absensi
+  const getStudentOrderIndex = (studentId: string) => {
+    const index = students.findIndex(s => s.id === studentId);
+    return index === -1 ? 999 : index;
+  };
+
+  // Filter records based on date range and sort by absensi order
   const filteredHafalanRecords = useMemo(() => {
-    if (!startDate || !endDate) return hafalanRecords;
-    return hafalanRecords.filter(record => {
-      const recordDate = parseISO(record.date);
-      return isWithinInterval(recordDate, { start: startDate, end: endDate });
+    let records = hafalanRecords;
+    if (startDate && endDate) {
+      records = records.filter(record => {
+        const recordDate = parseISO(record.date);
+        return isWithinInterval(recordDate, { start: startDate, end: endDate });
+      });
+    }
+    // Sort by student absensi order, then by date
+    return records.sort((a, b) => {
+      const orderA = getStudentOrderIndex(a.studentId);
+      const orderB = getStudentOrderIndex(b.studentId);
+      if (orderA !== orderB) return orderA - orderB;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
   }, [hafalanRecords, startDate, endDate]);
 
   const filteredMurajaahRecords = useMemo(() => {
-    if (!startDate || !endDate) return murajaahRecords;
-    return murajaahRecords.filter(record => {
-      const recordDate = parseISO(record.date);
-      return isWithinInterval(recordDate, { start: startDate, end: endDate });
+    let records = murajaahRecords;
+    if (startDate && endDate) {
+      records = records.filter(record => {
+        const recordDate = parseISO(record.date);
+        return isWithinInterval(recordDate, { start: startDate, end: endDate });
+      });
+    }
+    // Sort by student absensi order, then by date
+    return records.sort((a, b) => {
+      const orderA = getStudentOrderIndex(a.studentId);
+      const orderB = getStudentOrderIndex(b.studentId);
+      if (orderA !== orderB) return orderA - orderB;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
   }, [murajaahRecords, startDate, endDate]);
 
