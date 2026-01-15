@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "react-router-dom";
-import { Users, BookOpen, Trophy, TrendingUp, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
+import { Users, BookOpen, Trophy, TrendingUp, CheckCircle, AlertCircle, ArrowLeft, TrendingDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 interface HafalanRecord {
@@ -107,6 +107,12 @@ const Dashboard = () => {
 
   // Top performers
   const topPerformers = studentProgress.filter(s => s.totalRecords > 0).slice(0, 5);
+
+  // Bottom performers (students with records, sorted by lowest score)
+  const bottomPerformers = studentProgress
+    .filter(s => s.totalRecords > 0)
+    .sort((a, b) => a.averageScore - b.averageScore)
+    .slice(0, 5);
 
   if (loading) {
     return (
@@ -298,6 +304,48 @@ const Dashboard = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-primary">{student.averageScore}</p>
+                      <p className="text-xs text-muted-foreground">rata-rata</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-4">
+                Belum ada data setoran
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Bottom Performers */}
+        <Card className="bg-card border-border mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <TrendingDown className="w-4 h-4 text-destructive" />
+              5 Siswa Nilai Terendah
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {bottomPerformers.length > 0 ? (
+              <div className="space-y-3">
+                {bottomPerformers.map((student, index) => (
+                  <div key={student.id} className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                      index === 0 ? 'bg-destructive text-white' :
+                      index === 1 ? 'bg-red-400 text-white' :
+                      index === 2 ? 'bg-orange-500 text-white' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{student.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {student.totalRecords} setoran • {student.completedSurahs} surah
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-destructive">{student.averageScore}</p>
                       <p className="text-xs text-muted-foreground">rata-rata</p>
                     </div>
                   </div>
