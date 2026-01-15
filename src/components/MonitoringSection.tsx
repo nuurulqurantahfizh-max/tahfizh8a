@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Student, HafalanRecord, getGradeStatus, regularSurahs, specialSurahs } from "@/data/students";
+import { Student, HafalanRecord, getGradeStatus } from "@/data/students";
+import { surahData, getAyatOptions, formatAyatRange, calculateAyatCount } from "@/data/surahData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,12 +31,19 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     surah: "",
-    ayat: "",
+    ayatStart: "",
+    ayatEnd: "",
     score: "",
     notes: "",
   });
 
-  const surahs = student.isSpecial ? specialSurahs : regularSurahs;
+  // Get available ayat options based on selected surah
+  const ayatOptions = formData.surah ? getAyatOptions(formData.surah) : [];
+  
+  // Filter end ayat options to only show ayat >= start ayat
+  const ayatEndOptions = formData.ayatStart 
+    ? ayatOptions.filter(a => a >= parseInt(formData.ayatStart))
+    : ayatOptions;
 
   // Load records from database
   useEffect(() => {
@@ -76,14 +84,26 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
     setFormData({
       date: new Date().toISOString().split("T")[0],
       surah: "",
-      ayat: "",
+      ayatStart: "",
+      ayatEnd: "",
       score: "",
       notes: "",
     });
   };
 
+  // Helper to parse ayat range from stored format (e.g., "1-10" or "5")
+  const parseAyatRange = (ayatStr: string): { start: string; end: string } => {
+    if (!ayatStr) return { start: "", end: "" };
+    const trimmed = ayatStr.trim();
+    if (trimmed.includes("-")) {
+      const parts = trimmed.split("-").map(p => p.trim());
+      return { start: parts[0], end: parts[1] };
+    }
+    return { start: trimmed, end: trimmed };
+  };
+
   const handleAdd = async () => {
-    if (!formData.surah || !formData.ayat || !formData.score) {
+    if (!formData.surah || !formData.ayatStart || !formData.ayatEnd || !formData.score) {
       toast.error("Mohon lengkapi semua field yang wajib diisi");
       return;
     }
@@ -94,6 +114,8 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       return;
     }
 
+    const ayatRange = formatAyatRange(parseInt(formData.ayatStart), parseInt(formData.ayatEnd));
+
     setIsSaving(true);
     try {
       const { data, error } = await supabase
@@ -102,7 +124,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
           student_id: student.id,
           date: formData.date,
           surah: formData.surah,
-          ayat: formData.ayat,
+          ayat: ayatRange,
           score: score,
           notes: formData.notes,
         })
@@ -135,10 +157,12 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
 
   const handleEdit = (record: HafalanRecord) => {
     setEditingId(record.id);
+    const { start, end } = parseAyatRange(record.ayat);
     setFormData({
       date: record.date,
       surah: record.surah,
-      ayat: record.ayat,
+      ayatStart: start,
+      ayatEnd: end,
       score: record.score.toString(),
       notes: record.notes,
     });
@@ -153,6 +177,8 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       return;
     }
 
+    const ayatRange = formatAyatRange(parseInt(formData.ayatStart), parseInt(formData.ayatEnd));
+
     setIsSaving(true);
     try {
       const { error } = await supabase
@@ -160,7 +186,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
         .update({
           date: formData.date,
           surah: formData.surah,
-          ayat: formData.ayat,
+          ayat: ayatRange,
           score: score,
           notes: formData.notes,
         })
@@ -174,7 +200,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
               ...r,
               date: formData.date,
               surah: formData.surah,
-              ayat: formData.ayat,
+              ayat: ayatRange,
               score: score,
               notes: formData.notes,
             }
@@ -335,28 +361,62 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
               <Label htmlFor="surah">Surat</Label>
               <Select
                 value={formData.surah}
-                onValueChange={(value) => setFormData({ ...formData, surah: value })}
+                onValueChange={(value) => setFormData({ ...formData, surah: value, ayatStart: "", ayatEnd: "" })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih surat" />
                 </SelectTrigger>
                 <SelectContent>
-                  {surahs.map((surah) => (
-                    <SelectItem key={surah} value={surah}>
-                      {surah}
+                  {surahData.map((surah) => (
+                    <SelectItem key={surah.name} value={surah.name}>
+                      {surah.name} ({surah.totalAyat} ayat)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ayat">Ayat yang Dihafal</Label>
-              <Input
-                id="ayat"
-                placeholder="Contoh: 1-10"
-                value={formData.ayat}
-                onChange={(e) => setFormData({ ...formData, ayat: e.target.value })}
-              />
+              <Label htmlFor="ayatStart">Ayat Mulai</Label>
+              <Select
+                value={formData.ayatStart}
+                onValueChange={(value) => {
+                  const newEnd = formData.ayatEnd && parseInt(formData.ayatEnd) < parseInt(value) 
+                    ? value 
+                    : formData.ayatEnd;
+                  setFormData({ ...formData, ayatStart: value, ayatEnd: newEnd });
+                }}
+                disabled={!formData.surah}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih ayat mulai" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ayatOptions.map((ayat) => (
+                    <SelectItem key={ayat} value={ayat.toString()}>
+                      Ayat {ayat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ayatEnd">Ayat Selesai</Label>
+              <Select
+                value={formData.ayatEnd}
+                onValueChange={(value) => setFormData({ ...formData, ayatEnd: value })}
+                disabled={!formData.ayatStart}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih ayat selesai" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ayatEndOptions.map((ayat) => (
+                    <SelectItem key={ayat} value={ayat.toString()}>
+                      Ayat {ayat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="score">Nilai (1-100)</Label>
@@ -370,6 +430,12 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
               />
             </div>
           </div>
+          {/* Show ayat count */}
+          {formData.ayatStart && formData.ayatEnd && (
+            <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+              Jumlah ayat yang disetorkan: <span className="font-semibold text-primary">{calculateAyatCount(formatAyatRange(parseInt(formData.ayatStart), parseInt(formData.ayatEnd)))}</span> ayat
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="notes">Catatan Guru</Label>
             <Textarea
