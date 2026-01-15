@@ -1,15 +1,21 @@
 import { Link } from "react-router-dom";
 import { students, MurajaahRecord } from "@/data/students";
-import { ArrowLeft, Download, RefreshCw, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { ArrowLeft, Download, RefreshCw, Loader2, CalendarIcon } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 const RekapMurajaah = () => {
   const [allRecords, setAllRecords] = useState<(MurajaahRecord & { studentName: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(new Date()));
 
   useEffect(() => {
     const fetchAllRecords = async () => {
@@ -60,6 +66,15 @@ const RekapMurajaah = () => {
     }
   };
 
+  // Filter records based on date range
+  const filteredRecords = useMemo(() => {
+    if (!startDate || !endDate) return allRecords;
+    return allRecords.filter(record => {
+      const recordDate = parseISO(record.date);
+      return isWithinInterval(recordDate, { start: startDate, end: endDate });
+    });
+  }, [allRecords, startDate, endDate]);
+
   const exportToPDF = () => {
     const printContent = `
       <html>
@@ -79,6 +94,7 @@ const RekapMurajaah = () => {
         <body>
           <h1>Rekap Murajaah Hafalan (Orang Tua)</h1>
           <p style="text-align: center;">Madrasah Nuurul Qur'an - Kelas 8A</p>
+          <p style="text-align: center;">Periode: ${startDate ? format(startDate, "dd MMMM yyyy", { locale: localeId }) : "-"} s/d ${endDate ? format(endDate, "dd MMMM yyyy", { locale: localeId }) : "-"}</p>
           <p style="text-align: center;">Dicetak: ${format(new Date(), "dd MMMM yyyy", { locale: localeId })}</p>
           
           <table>
@@ -92,7 +108,7 @@ const RekapMurajaah = () => {
               </tr>
             </thead>
             <tbody>
-              ${allRecords.map((record, index) => {
+              ${filteredRecords.map((record, index) => {
                 const statusClass = record.status === "Lancar" ? "lancar" : 
                   record.status === "Kurang Lancar" ? "kurang-lancar" : "tidak-lancar";
                 return `
@@ -139,14 +155,73 @@ const RekapMurajaah = () => {
       </div>
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
+        {/* Date Filter */}
+        <div className="card-islamic p-4 mb-4">
+          <p className="text-sm font-medium text-foreground mb-3">Filter Tanggal:</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground mb-1">Dari</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "dd MMM yyyy", { locale: localeId }) : "Pilih tanggal"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground mb-1">Sampai</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "dd MMM yyyy", { locale: localeId }) : "Pilih tanggal"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </div>
+
         {/* Export Button */}
         <button
           onClick={exportToPDF}
-          disabled={allRecords.length === 0 || isLoading}
+          disabled={filteredRecords.length === 0 || isLoading}
           className="w-full mb-6 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border-2 border-gold text-gold hover:bg-gold/5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-5 h-5" />
-          Export PDF
+          Export PDF ({filteredRecords.length} data)
         </button>
 
         {/* Records */}
@@ -155,14 +230,14 @@ const RekapMurajaah = () => {
             <Loader2 className="w-6 h-6 animate-spin text-gold" />
             <span className="ml-2 text-muted-foreground">Memuat data...</span>
           </div>
-        ) : allRecords.length === 0 ? (
+        ) : filteredRecords.length === 0 ? (
           <div className="card-islamic p-8 text-center">
             <RefreshCw className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Belum ada data murajaah</p>
+            <p className="text-muted-foreground">Tidak ada data pada periode ini</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {allRecords.map((record) => (
+            {filteredRecords.map((record) => (
               <div key={record.id} className="card-islamic p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
