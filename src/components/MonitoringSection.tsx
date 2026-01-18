@@ -118,8 +118,8 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       }
 
       const score = parseInt(formData.score);
-      if (score < 0 || score > 100) {
-        toast.error("Nilai harus antara 0-100");
+      if (score < 1 || score > 100) {
+        toast.error("Nilai harus antara 1-100");
         return;
       }
     }
@@ -130,8 +130,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
     const notes = formData.isAbsent ? (formData.notes || "Siswa tidak hadir") : formData.notes;
 
     setIsSaving(true);
-    console.log('Saving record:', { student_id: student.id, date: formData.date, surah, ayat: ayatRange, score, notes, isAbsent: formData.isAbsent });
-    
+
     try {
       const { data, error } = await supabase
         .from('hafalan_records')
@@ -150,8 +149,6 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
         console.error('Supabase error:', error);
         throw error;
       }
-
-      console.log('Record saved successfully:', data);
 
       const newRecord: HafalanRecord = {
         id: data.id,
@@ -200,8 +197,8 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       }
     } else {
       const score = parseInt(formData.score);
-      if (score < 0 || score > 100) {
-        toast.error("Nilai harus antara 0-100");
+      if (score < 1 || score > 100) {
+        toast.error("Nilai harus antara 1-100");
         return;
       }
     }
@@ -475,11 +472,11 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="score">Nilai (0-100)</Label>
+                <Label htmlFor="score">Nilai (1-100)</Label>
                 <Input
                   id="score"
                   type="number"
-                  min="0"
+                  min="1"
                   max="100"
                   value={formData.score}
                   onChange={(e) => setFormData({ ...formData, score: e.target.value })}
