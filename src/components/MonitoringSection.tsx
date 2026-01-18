@@ -130,6 +130,8 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
     const notes = formData.isAbsent ? (formData.notes || "Siswa tidak hadir") : formData.notes;
 
     setIsSaving(true);
+    console.log('Saving record:', { student_id: student.id, date: formData.date, surah, ayat: ayatRange, score, notes, isAbsent: formData.isAbsent });
+    
     try {
       const { data, error } = await supabase
         .from('hafalan_records')
@@ -144,7 +146,12 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Record saved successfully:', data);
 
       const newRecord: HafalanRecord = {
         id: data.id,
