@@ -75,7 +75,33 @@ const RekapMurajaah = () => {
     });
   }, [allRecords, startDate, endDate]);
 
+  // Count submissions per student
+  const studentSubmissionCount = useMemo(() => {
+    const countMap: Record<string, { name: string; count: number }> = {};
+    filteredRecords.forEach(record => {
+      if (!countMap[record.studentId]) {
+        countMap[record.studentId] = { name: record.studentName, count: 0 };
+      }
+      countMap[record.studentId].count++;
+    });
+    return countMap;
+  }, [filteredRecords]);
+
+  // Get students who didn't submit
+  const studentsWithoutSubmission = useMemo(() => {
+    const submittedIds = new Set(filteredRecords.map(r => r.studentId));
+    return students.filter(s => !submittedIds.has(s.id)).map(s => ({
+      id: s.id,
+      name: s.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+    }));
+  }, [filteredRecords]);
+
   const exportToPDF = () => {
+    // Sort students by submission count (highest first)
+    const sortedSubmissions = Object.entries(studentSubmissionCount)
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([id, data], index) => ({ rank: index + 1, ...data }));
+
     const printContent = `
       <html>
         <head>
@@ -83,12 +109,15 @@ const RekapMurajaah = () => {
           <style>
             body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
             h1 { color: #d97706; text-align: center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            h2 { color: #374151; margin-top: 30px; font-size: 16px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
             th { background-color: #d97706; color: white; }
-            .lancar { color: #166534; font-weight: bold; }
-            .kurang-lancar { color: #d97706; font-weight: bold; }
-            .tidak-lancar { color: #dc2626; font-weight: bold; }
+            .summary { background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .summary p { margin: 5px 0; }
+            .no-submit { color: #dc2626; }
+            .no-submit-list { background-color: #fee2e2; padding: 15px; border-radius: 8px; }
+            .no-submit-list ul { margin: 10px 0; padding-left: 20px; }
           </style>
         </head>
         <body>
@@ -97,32 +126,40 @@ const RekapMurajaah = () => {
           <p style="text-align: center;">Periode: ${startDate ? format(startDate, "dd MMMM yyyy", { locale: localeId }) : "-"} s/d ${endDate ? format(endDate, "dd MMMM yyyy", { locale: localeId }) : "-"}</p>
           <p style="text-align: center;">Dicetak: ${format(new Date(), "dd MMMM yyyy", { locale: localeId })}</p>
           
+          <div class="summary">
+            <p><strong>Total Setoran:</strong> ${filteredRecords.length} kali</p>
+            <p><strong>Siswa yang Setor:</strong> ${Object.keys(studentSubmissionCount).length} siswa</p>
+            <p><strong>Siswa yang Tidak Setor:</strong> ${studentsWithoutSubmission.length} siswa</p>
+          </div>
+
+          <h2>📊 Jumlah Setoran Per Siswa</h2>
           <table>
             <thead>
               <tr>
                 <th>No</th>
-                <th>Nama</th>
-                <th>Tanggal</th>
-                <th>Surat/Ayat</th>
-                <th>Kelancaran</th>
+                <th>Nama Siswa</th>
+                <th>Jumlah Setoran</th>
               </tr>
             </thead>
             <tbody>
-              ${filteredRecords.map((record, index) => {
-                const statusClass = record.status === "Lancar" ? "lancar" : 
-                  record.status === "Kurang Lancar" ? "kurang-lancar" : "tidak-lancar";
-                return `
-                  <tr>
-                    <td>${index + 1}</td>
-                    <td>${record.studentName}</td>
-                    <td>${format(new Date(record.date), "dd/MM/yyyy")}</td>
-                    <td>${record.surah}</td>
-                    <td class="${statusClass}">${record.status}</td>
-                  </tr>
-                `;
-              }).join("")}
+              ${sortedSubmissions.map((data) => `
+                <tr>
+                  <td>${data.rank}</td>
+                  <td>${data.name}</td>
+                  <td>${data.count} kali</td>
+                </tr>
+              `).join("")}
             </tbody>
           </table>
+
+          ${studentsWithoutSubmission.length > 0 ? `
+            <h2 class="no-submit">⚠️ Siswa yang Tidak Setor Murajaah</h2>
+            <div class="no-submit-list">
+              <ul>
+                ${studentsWithoutSubmission.map((s, i) => `<li>${i + 1}. ${s.name}</li>`).join("")}
+              </ul>
+            </div>
+          ` : ''}
         </body>
       </html>
     `;
@@ -224,37 +261,78 @@ const RekapMurajaah = () => {
           Export PDF ({filteredRecords.length} data)
         </button>
 
-        {/* Records */}
+        {/* Summary Preview */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-gold" />
             <span className="ml-2 text-muted-foreground">Memuat data...</span>
           </div>
-        ) : filteredRecords.length === 0 ? (
-          <div className="card-islamic p-8 text-center">
-            <RefreshCw className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Tidak ada data pada periode ini</p>
-          </div>
         ) : (
-          <div className="space-y-3">
-            {filteredRecords.map((record) => (
-              <div key={record.id} className="card-islamic p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold text-foreground">{record.studentName}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(record.date), "dd MMMM yyyy", { locale: localeId })}
-                    </p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusStyle(record.status)}`}>
-                    {record.status}
-                  </span>
+          <div className="space-y-4">
+            {/* Summary Stats */}
+            <div className="card-islamic p-4 bg-gold/5 border-gold/20">
+              <h3 className="font-semibold text-foreground mb-3">📊 Ringkasan Periode</h3>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-gold">{filteredRecords.length}</p>
+                  <p className="text-xs text-muted-foreground">Total Setoran</p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {record.surah}
-                </p>
+                <div>
+                  <p className="text-2xl font-bold text-green-600">{Object.keys(studentSubmissionCount).length}</p>
+                  <p className="text-xs text-muted-foreground">Siswa Setor</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-red-600">{studentsWithoutSubmission.length}</p>
+                  <p className="text-xs text-muted-foreground">Tidak Setor</p>
+                </div>
               </div>
-            ))}
+            </div>
+
+            {/* Submission Count per Student */}
+            {Object.keys(studentSubmissionCount).length > 0 && (
+              <div className="card-islamic p-4">
+                <h3 className="font-semibold text-foreground mb-3">📝 Jumlah Setoran Per Siswa</h3>
+                <div className="space-y-2">
+                  {Object.entries(studentSubmissionCount)
+                    .sort((a, b) => b[1].count - a[1].count)
+                    .map(([id, data], index) => (
+                      <div key={id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-gold/10 text-gold text-xs flex items-center justify-center font-medium">
+                            {index + 1}
+                          </span>
+                          <span className="text-sm text-foreground">{data.name}</span>
+                        </div>
+                        <span className="text-sm font-medium text-gold">{data.count} kali</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Students Without Submission */}
+            {studentsWithoutSubmission.length > 0 && (
+              <div className="card-islamic p-4 bg-red-50 border-red-200">
+                <h3 className="font-semibold text-red-700 mb-3">⚠️ Siswa yang Tidak Setor Murajaah</h3>
+                <div className="space-y-2">
+                  {studentsWithoutSubmission.map((student, index) => (
+                    <div key={student.id} className="flex items-center gap-2 py-1">
+                      <span className="w-5 h-5 rounded-full bg-red-100 text-red-600 text-xs flex items-center justify-center font-medium">
+                        {index + 1}
+                      </span>
+                      <span className="text-sm text-red-700">{student.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {filteredRecords.length === 0 && studentsWithoutSubmission.length === 0 && (
+              <div className="card-islamic p-8 text-center">
+                <RefreshCw className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">Tidak ada data pada periode ini</p>
+              </div>
+            )}
           </div>
         )}
       </main>
