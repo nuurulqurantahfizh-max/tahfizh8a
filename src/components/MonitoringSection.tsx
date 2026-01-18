@@ -35,6 +35,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
     ayatEnd: "",
     score: "",
     notes: "",
+    isAbsent: false,
   });
 
   // Get available ayat options based on selected surah
@@ -88,6 +89,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       ayatEnd: "",
       score: "",
       notes: "",
+      isAbsent: false,
     });
   };
 
@@ -103,18 +105,29 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
   };
 
   const handleAdd = async () => {
-    if (!formData.surah || !formData.ayatStart || !formData.ayatEnd || !formData.score) {
-      toast.error("Mohon lengkapi semua field yang wajib diisi");
-      return;
+    // For absent students, only date is required
+    if (formData.isAbsent) {
+      if (!formData.date) {
+        toast.error("Mohon pilih tanggal");
+        return;
+      }
+    } else {
+      if (!formData.surah || !formData.ayatStart || !formData.ayatEnd || !formData.score) {
+        toast.error("Mohon lengkapi semua field yang wajib diisi");
+        return;
+      }
+
+      const score = parseInt(formData.score);
+      if (score < 0 || score > 100) {
+        toast.error("Nilai harus antara 0-100");
+        return;
+      }
     }
 
-    const score = parseInt(formData.score);
-    if (score < 1 || score > 100) {
-      toast.error("Nilai harus antara 1-100");
-      return;
-    }
-
-    const ayatRange = formatAyatRange(parseInt(formData.ayatStart), parseInt(formData.ayatEnd));
+    const score = formData.isAbsent ? 0 : parseInt(formData.score);
+    const ayatRange = formData.isAbsent ? "-" : formatAyatRange(parseInt(formData.ayatStart), parseInt(formData.ayatEnd));
+    const surah = formData.isAbsent ? "Tidak Hadir" : formData.surah;
+    const notes = formData.isAbsent ? (formData.notes || "Siswa tidak hadir") : formData.notes;
 
     setIsSaving(true);
     try {
@@ -123,10 +136,10 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
         .insert({
           student_id: student.id,
           date: formData.date,
-          surah: formData.surah,
+          surah: surah,
           ayat: ayatRange,
           score: score,
-          notes: formData.notes,
+          notes: notes,
         })
         .select()
         .single();
@@ -146,10 +159,10 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       setRecords([newRecord, ...records]);
       resetForm();
       setIsAdding(false);
-      toast.success("Data hafalan berhasil ditambahkan");
+      toast.success(formData.isAbsent ? "Data ketidakhadiran berhasil dicatat" : "Data hafalan berhasil ditambahkan");
     } catch (error) {
       console.error('Error adding record:', error);
-      toast.error("Gagal menyimpan data hafalan");
+      toast.error("Gagal menyimpan data");
     } finally {
       setIsSaving(false);
     }
@@ -165,19 +178,31 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       ayatEnd: end,
       score: record.score.toString(),
       notes: record.notes,
+      isAbsent: record.score === 0,
     });
   };
 
   const handleUpdate = async () => {
     if (!editingId) return;
 
-    const score = parseInt(formData.score);
-    if (score < 1 || score > 100) {
-      toast.error("Nilai harus antara 1-100");
-      return;
+    // For absent students
+    if (formData.isAbsent) {
+      if (!formData.date) {
+        toast.error("Mohon pilih tanggal");
+        return;
+      }
+    } else {
+      const score = parseInt(formData.score);
+      if (score < 0 || score > 100) {
+        toast.error("Nilai harus antara 0-100");
+        return;
+      }
     }
 
-    const ayatRange = formatAyatRange(parseInt(formData.ayatStart), parseInt(formData.ayatEnd));
+    const score = formData.isAbsent ? 0 : parseInt(formData.score);
+    const ayatRange = formData.isAbsent ? "-" : formatAyatRange(parseInt(formData.ayatStart), parseInt(formData.ayatEnd));
+    const surah = formData.isAbsent ? "Tidak Hadir" : formData.surah;
+    const notes = formData.isAbsent ? (formData.notes || "Siswa tidak hadir") : formData.notes;
 
     setIsSaving(true);
     try {
@@ -185,10 +210,10 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
         .from('hafalan_records')
         .update({
           date: formData.date,
-          surah: formData.surah,
+          surah: surah,
           ayat: ayatRange,
           score: score,
-          notes: formData.notes,
+          notes: notes,
         })
         .eq('id', editingId);
 
@@ -199,10 +224,10 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
           ? {
               ...r,
               date: formData.date,
-              surah: formData.surah,
+              surah: surah,
               ayat: ayatRange,
               score: score,
-              notes: formData.notes,
+              notes: notes,
             }
           : r
       );
@@ -210,10 +235,10 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       setRecords(updated);
       setEditingId(null);
       resetForm();
-      toast.success("Data hafalan berhasil diperbarui");
+      toast.success("Data berhasil diperbarui");
     } catch (error) {
       console.error('Error updating record:', error);
-      toast.error("Gagal memperbarui data hafalan");
+      toast.error("Gagal memperbarui data");
     } finally {
       setIsSaving(false);
     }
@@ -255,6 +280,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
             .lancar { background: #dbeafe; color: #1e40af; }
             .kurang-lancar { background: #fef3c7; color: #92400e; }
             .tidak-lancar { background: #fee2e2; color: #991b1b; }
+            .tidak-hadir { background: #e5e7eb; color: #374151; }
           </style>
         </head>
         <body>
@@ -278,7 +304,7 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
             <tbody>
               ${records.map((r, i) => {
                 const status = getGradeStatus(r.score);
-                const statusClass = r.score >= 90 ? 'sangat-lancar' : r.score >= 80 ? 'lancar' : r.score >= 70 ? 'kurang-lancar' : 'tidak-lancar';
+                const statusClass = r.score === 0 ? 'tidak-hadir' : r.score >= 90 ? 'sangat-lancar' : r.score >= 80 ? 'lancar' : r.score >= 70 ? 'kurang-lancar' : 'tidak-lancar';
                 return `
                   <tr>
                     <td>${i + 1}</td>
@@ -347,9 +373,118 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
       {/* Add/Edit Form */}
       {isLoggedIn && (isAdding || editingId) && (
         <div className="card-islamic p-4 space-y-4 animate-slide-up">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Absent Checkbox */}
+          <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg border">
+            <input
+              type="checkbox"
+              id="isAbsent"
+              checked={formData.isAbsent}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                isAbsent: e.target.checked,
+                score: e.target.checked ? "0" : "",
+                surah: e.target.checked ? "" : formData.surah,
+                ayatStart: e.target.checked ? "" : formData.ayatStart,
+                ayatEnd: e.target.checked ? "" : formData.ayatEnd,
+              })}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <Label htmlFor="isAbsent" className="text-sm font-medium cursor-pointer">
+              Siswa Tidak Hadir (Nilai otomatis 0)
+            </Label>
+          </div>
+
+          {/* Form fields - hide when absent */}
+          {!formData.isAbsent && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">Tanggal</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="surah">Surat</Label>
+                <Select
+                  value={formData.surah}
+                  onValueChange={(value) => setFormData({ ...formData, surah: value, ayatStart: "", ayatEnd: "" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih surat" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {surahData.map((surah) => (
+                      <SelectItem key={surah.name} value={surah.name}>
+                        {surah.name} ({surah.totalAyat} ayat)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ayatStart">Ayat Mulai</Label>
+                <Select
+                  value={formData.ayatStart}
+                  onValueChange={(value) => {
+                    const newEnd = formData.ayatEnd && parseInt(formData.ayatEnd) < parseInt(value) 
+                      ? value 
+                      : formData.ayatEnd;
+                    setFormData({ ...formData, ayatStart: value, ayatEnd: newEnd });
+                  }}
+                  disabled={!formData.surah}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih ayat mulai" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ayatOptions.map((ayat) => (
+                      <SelectItem key={ayat} value={ayat.toString()}>
+                        Ayat {ayat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ayatEnd">Ayat Selesai</Label>
+                <Select
+                  value={formData.ayatEnd}
+                  onValueChange={(value) => setFormData({ ...formData, ayatEnd: value })}
+                  disabled={!formData.ayatStart}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih ayat selesai" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ayatEndOptions.map((ayat) => (
+                      <SelectItem key={ayat} value={ayat.toString()}>
+                        Ayat {ayat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="score">Nilai (0-100)</Label>
+                <Input
+                  id="score"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formData.score}
+                  onChange={(e) => setFormData({ ...formData, score: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Date only for absent */}
+          {formData.isAbsent && (
             <div className="space-y-2">
-              <Label htmlFor="date">Tanggal</Label>
+              <Label htmlFor="date">Tanggal Tidak Hadir</Label>
               <Input
                 id="date"
                 type="date"
@@ -357,90 +492,18 @@ const MonitoringSection = ({ student, isLoggedIn }: MonitoringSectionProps) => {
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="surah">Surat</Label>
-              <Select
-                value={formData.surah}
-                onValueChange={(value) => setFormData({ ...formData, surah: value, ayatStart: "", ayatEnd: "" })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih surat" />
-                </SelectTrigger>
-                <SelectContent>
-                  {surahData.map((surah) => (
-                    <SelectItem key={surah.name} value={surah.name}>
-                      {surah.name} ({surah.totalAyat} ayat)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ayatStart">Ayat Mulai</Label>
-              <Select
-                value={formData.ayatStart}
-                onValueChange={(value) => {
-                  const newEnd = formData.ayatEnd && parseInt(formData.ayatEnd) < parseInt(value) 
-                    ? value 
-                    : formData.ayatEnd;
-                  setFormData({ ...formData, ayatStart: value, ayatEnd: newEnd });
-                }}
-                disabled={!formData.surah}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih ayat mulai" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ayatOptions.map((ayat) => (
-                    <SelectItem key={ayat} value={ayat.toString()}>
-                      Ayat {ayat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ayatEnd">Ayat Selesai</Label>
-              <Select
-                value={formData.ayatEnd}
-                onValueChange={(value) => setFormData({ ...formData, ayatEnd: value })}
-                disabled={!formData.ayatStart}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih ayat selesai" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ayatEndOptions.map((ayat) => (
-                    <SelectItem key={ayat} value={ayat.toString()}>
-                      Ayat {ayat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="score">Nilai (1-100)</Label>
-              <Input
-                id="score"
-                type="number"
-                min="1"
-                max="100"
-                value={formData.score}
-                onChange={(e) => setFormData({ ...formData, score: e.target.value })}
-              />
-            </div>
-          </div>
+          )}
           {/* Show ayat count */}
-          {formData.ayatStart && formData.ayatEnd && (
+          {!formData.isAbsent && formData.ayatStart && formData.ayatEnd && (
             <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
               Jumlah ayat yang disetorkan: <span className="font-semibold text-primary">{calculateAyatCount(formatAyatRange(parseInt(formData.ayatStart), parseInt(formData.ayatEnd)))}</span> ayat
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="notes">Catatan Guru</Label>
+            <Label htmlFor="notes">{formData.isAbsent ? "Keterangan (opsional)" : "Catatan Guru"}</Label>
             <Textarea
               id="notes"
-              placeholder="Catatan tambahan..."
+              placeholder={formData.isAbsent ? "Keterangan tidak hadir (opsional)..." : "Catatan tambahan..."}
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             />
