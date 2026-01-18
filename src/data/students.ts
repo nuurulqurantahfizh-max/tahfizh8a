@@ -80,6 +80,7 @@ export const islamicQuotes = [
 ];
 
 export const getGradeStatus = (score: number): { label: string; class: string } => {
+  if (score === 0) return { label: "Tidak Hadir", class: "status-tidak-hadir" };
   if (score >= 90) return { label: "Sangat Lancar", class: "status-sangat-lancar" };
   if (score >= 80) return { label: "Lancar", class: "status-lancar" };
   if (score >= 70) return { label: "Kurang Lancar (Mengulang)", class: "status-kurang-lancar" };
